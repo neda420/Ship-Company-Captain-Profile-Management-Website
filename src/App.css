@@ -1,0 +1,45 @@
+/* src/App.css */
+.dashboard-container {
+  display: flex;       /* This puts Sidebar and Main next to each other */
+  min-height: 100vh;   /* Full height of the screen */
+  width: 100vw;
+}
+
+.sidebar {
+  width: 240px;        /* Fixed width like the screenshots */
+  background-color: white;
+  border-right: 1px solid #e0e0e0;
+  padding: 20px;
+  flex-shrink: 0;      /* Prevents sidebar from squishing */
+}
+
+.main-content {
+  flex-grow: 1;        /* Takes up all remaining space */
+  padding: 30px;
+  background-color: #f8f9fa;
+  overflow-y: auto;    /* Allows scrolling inside the main area */
+}
+
+/* Make the list look like a menu */
+.sidebar-menu ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar-menu li {
+  margin-bottom: 10px;
+}
+
+.sidebar-menu a {
+  text-decoration: none;
+  color: #555;
+  font-weight: 500;
+  display: block;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.sidebar-menu a:hover {
+  background-color: #eef2f6; /* Hover effect like Yomly */
+  color: #007bff;
+}
