@@ -23,6 +23,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { useCaptains } from '../context/CaptainsContext';
+import { uploadFile } from '../lib/api';
+import { useToast } from '../context/ToastContext';
 import { cn } from '../lib/utils';
 
 // Document types list (same as Profile page)
@@ -59,7 +61,8 @@ const DOCUMENT_TYPES: DocumentType[] = [
 
 const Documents = () => {
   const { goBack, canGoBack } = useNavigationHistory();
-  const { captains, updateCaptain } = useCaptains();
+  const { captains, updateCaptain, reloadCaptains } = useCaptains();
+  const { showSuccess, showError } = useToast();
   const [selectedDocumentType, setSelectedDocumentType] = useState<DocumentType | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [documentTypeSearch, setDocumentTypeSearch] = useState('');
@@ -89,9 +92,9 @@ const Documents = () => {
     return new Date(date) < new Date();
   };
 
-  const handleDocumentUpload = (captainId: string, docTypeKey: string, file: File) => {
+  const handleDocumentUpload = async (captainId: string, docTypeKey: string, file: File) => {
     const objectUrl = URL.createObjectURL(file);
-    
+
     setUploadedFiles(prev => ({
       ...prev,
       [captainId]: {
@@ -100,15 +103,32 @@ const Documents = () => {
       }
     }));
 
-    // Update the captain's documents in mock data
-    const captain = captains.find(c => c.id === captainId);
-    if (captain) {
-      updateCaptain(captainId, {
-        documents: {
-          ...captain.documents,
-          [docTypeKey]: objectUrl,
-        },
-      });
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('docKey', docTypeKey);
+      const res = await uploadFile<{ fileUrl: string }>(`/captains/${captainId}/documents`, formData);
+
+      // Reload captains to get updated documents from database
+      await reloadCaptains();
+      
+      // Clean up object URL
+      URL.revokeObjectURL(objectUrl);
+      
+      // Show success notification
+      const docType = DOCUMENT_TYPES.find(d => d.key === docTypeKey);
+      const captain = captains.find(c => c.id === captainId);
+      if (docType && captain) {
+        showSuccess(`${docType.label} uploaded successfully for ${captain.fullName}!`);
+      } else {
+        showSuccess('Document uploaded successfully!');
+      }
+    } catch (err: any) {
+      console.error('Failed to upload document', err);
+      // Clean up object URL on error
+      URL.revokeObjectURL(objectUrl);
+      const errorMessage = err?.details?.sqlMessage || err?.details?.error || err?.message || 'Failed to upload document. Please try again.';
+      showError(errorMessage);
     }
   };
 

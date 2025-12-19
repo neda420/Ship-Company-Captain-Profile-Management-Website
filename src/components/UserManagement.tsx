@@ -14,6 +14,8 @@ import {
 } from './ui/dialog';
 import type { User, Permission } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
+import { useToast } from '../context/ToastContext';
 
 const PERMISSIONS: { key: Permission; label: string; description: string }[] = [
   { key: 'view_dashboard', label: 'View Dashboard', description: 'Access to dashboard overview' },
@@ -27,7 +29,7 @@ const PERMISSIONS: { key: Permission; label: string; description: string }[] = [
 ];
 
 const UserManagement = () => {
-  const { users, setUsers } = useAuth();
+  const { users, reloadUsers } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
@@ -82,64 +84,70 @@ const UserManagement = () => {
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.username || !formData.email || !formData.fullName) {
-      alert('Please fill in all required fields');
+      showWarning('Please fill in all required fields');
       return;
     }
 
-    if (!editingUser && !formData.password) {
-      alert('Please enter a password for new users');
-      return;
-    }
-
-    if (editingUser) {
-      // Update existing user
-      const updatedUsers = users.map(u =>
-        u.id === editingUser.id
-          ? {
-              ...u,
-              username: formData.username,
-              email: formData.email,
-              fullName: formData.fullName,
-              permissions: formData.permissions,
-              ...(formData.password && { password: formData.password }),
-            }
-          : u
-      );
-      setUsers(updatedUsers);
-    } else {
-      // Create new user
-      const newUser: User & { password?: string } = {
-        id: Date.now().toString(),
-        username: formData.username,
-        email: formData.email,
-        fullName: formData.fullName,
-        role: 'user',
-        permissions: formData.permissions,
-        createdAt: new Date().toISOString(),
-        isActive: true,
-        password: formData.password, // Store password (in production, this would be hashed)
-      };
-      const updatedUsers = [...users, newUser];
-      setUsers(updatedUsers);
-    }
-
-    handleCloseDialog();
-  };
-
-  const handleDelete = (userId: string) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      const updatedUsers = users.filter(u => u.id !== userId);
-      setUsers(updatedUsers);
+    try {
+      if (editingUser) {
+        await api.put(`/users/${editingUser.id}`, {
+          username: formData.username,
+          email: formData.email,
+          fullName: formData.fullName,
+          password: formData.password || undefined,
+          permissions: formData.permissions,
+          isActive: editingUser.isActive,
+        });
+      } else {
+        if (!formData.password) {
+          showWarning('Please enter a password for new users');
+          return;
+        }
+        await api.post('/users', {
+          username: formData.username,
+          email: formData.email,
+          fullName: formData.fullName,
+          password: formData.password,
+          permissions: formData.permissions,
+        });
+      }
+      await reloadUsers();
+      handleCloseDialog();
+      showSuccess(editingUser ? 'User updated successfully!' : 'User added successfully!');
+    } catch (err: any) {
+      showError(err.message || 'Failed to save user');
     }
   };
 
-  const handleToggleActive = (userId: string) => {
-    const updatedUsers = users.map(u =>
-      u.id === userId ? { ...u, isActive: !u.isActive } : u
-    );
-    setUsers(updatedUsers);
+  const handleDelete = async (userId: string) => {
+    if (!window.confirm('Are you sure you want to delete this user?')) return;
+    try {
+      await api.del(`/users/${userId}`);
+      await reloadUsers();
+      showSuccess('User deleted successfully!');
+    } catch (err: any) {
+      showError(err.message || 'Failed to delete user');
+    }
+  };
+
+  const handleToggleActive = async (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    try {
+      await api.put(`/users/${userId}`, {
+        username: user.username,
+        email: user.email,
+        fullName: user.fullName,
+        permissions: user.permissions,
+        isActive: !user.isActive,
+      });
+      await reloadUsers();
+      showSuccess(`User ${!user.isActive ? 'activated' : 'deactivated'} successfully!`);
+    } catch (err: any) {
+      showError(err.message || 'Failed to update status');
+    }
   };
 
   return (

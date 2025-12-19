@@ -11,12 +11,18 @@ export interface Filters {
 }
 
 export interface Certificate {
-  id: string;
-  name: string;
-  number: string;
+  id?: string;
+  certificateName: string;
+  certificateNumber: string;
   issueDate: string;
   expiryDate: string;
+  issuingAuthority: string;
   fileUrl?: string;
+}
+
+export interface Skill {
+  name: string;
+  proficiencyLevel: string;
 }
 
 export interface SeaService {
@@ -112,6 +118,7 @@ export interface CaptainProfile {
   email: string;
   phone: string;
   location: string;
+  team: string;
   linkedInUrl?: string;
   // New comprehensive fields
   personalIdentity: PersonalIdentity;
@@ -127,13 +134,13 @@ export interface CaptainProfile {
     shoeSize: number;
     coverallSize: string;
   };
-  licenses: Certificate[];
+  certificates: Certificate[];
   seaServiceHistory: SeaService[];
-  skills: string[];
+  skills: Skill[];
 }
 
 // User and Permission Types
-export type Permission = 
+export type Permission =
   | 'view_dashboard'
   | 'view_employees'
   | 'edit_employees'

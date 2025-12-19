@@ -1,26 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings as SettingsIcon, Bell, Shield, Users, Lock, Mail, Globe, Save, Check } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, Shield, Users, Lock, Mail, Globe, Save, Check, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import UserManagement from '../components/UserManagement';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
+import { useToast } from '../context/ToastContext';
 
 const Settings = () => {
   const { hasPermission, user } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [companyName, setCompanyName] = useState('Global Cargo Shipping Company');
   const [email, setEmail] = useState('admin@globalcargoshipping.com');
   const [timezone, setTimezone] = useState('UTC');
   const [language, setLanguage] = useState('en');
   const [dateFormat, setDateFormat] = useState('MM/DD/YYYY');
-  const [notifications, setNotifications] = useState({
-    email: true,
-    documentExpiry: true,
-    documentExpiringSoon: true,
-    newEmployee: false,
-  });
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -28,26 +25,92 @@ const Settings = () => {
     confirmPassword: '',
   });
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [error, setError] = useState('');
+
+  // Load settings from database on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        setIsLoading(true);
+        const settings = await api.get<{
+          company_name?: string;
+          company_email?: string;
+          timezone?: string;
+          language?: string;
+          date_format?: string;
+        }>('/settings');
+        
+        if (settings.company_name) setCompanyName(settings.company_name);
+        if (settings.company_email) setEmail(settings.company_email);
+        if (settings.timezone) setTimezone(settings.timezone);
+        if (settings.language) setLanguage(settings.language);
+        if (settings.date_format) setDateFormat(settings.date_format);
+      } catch (err: any) {
+        console.error('Failed to load settings:', err);
+        setError('Failed to load settings. Using defaults.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, []);
   
-  const handleSaveSettings = () => {
-    // In a real app, this would save to backend
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+  const handleSaveSettings = async () => {
+    try {
+      setIsSaving(true);
+      setError('');
+      
+      await api.put('/settings', {
+        company_name: companyName,
+        company_email: email,
+        timezone: timezone,
+        language: language,
+        date_format: dateFormat,
+      });
+      
+      setSaveSuccess(true);
+      showSuccess('Settings saved successfully!');
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: any) {
+      console.error('Failed to save settings:', err);
+      setError(err.message || 'Failed to save settings');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert('New passwords do not match');
+      setError('New passwords do not match');
       return;
     }
     if (passwordData.newPassword.length < 8) {
-      alert('Password must be at least 8 characters');
+      setError('Password must be at least 8 characters');
       return;
     }
-    // In a real app, this would update password
-    alert('Password updated successfully!');
-    setShowPasswordDialog(false);
-    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    
+    try {
+      setIsChangingPassword(true);
+      setError('');
+      
+      await api.post('/auth/change-password', {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+      
+      showSuccess('Password updated successfully!');
+      setShowPasswordDialog(false);
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err: any) {
+      console.error('Failed to change password:', err);
+      setError(err.message || 'Failed to change password');
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   return (
@@ -81,6 +144,12 @@ const Settings = () => {
 
           {/* General Settings Tab */}
           <TabsContent value="general" className="space-y-4 sm:space-y-6">
+            {isLoading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+              </div>
+            )}
+            {!isLoading && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               {/* General Settings */}
               <motion.div
@@ -167,14 +236,34 @@ const Settings = () => {
                   </div>
                 </div>
 
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm"
+                  >
+                    {error}
+                  </motion.div>
+                )}
+                
                 <div className="flex items-center gap-3">
                   <Button 
                     onClick={handleSaveSettings}
+                    disabled={isLoading || isSaving}
                     className="bg-emerald-500 hover:bg-emerald-600 w-full sm:w-auto" 
                     size="sm"
                   >
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Changes
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save Changes
+                      </>
+                    )}
                   </Button>
                   {saveSuccess && (
                     <motion.div
@@ -191,56 +280,6 @@ const Settings = () => {
 
               {/* Quick Actions */}
               <div className="space-y-4 sm:space-y-6">
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.2 }}
-                  className="glass rounded-xl p-4 sm:p-6"
-                >
-                  <div className="flex items-center gap-3 mb-3 sm:mb-4">
-                    <Bell className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                    <h3 className="text-sm sm:text-base font-bold text-slate-900">Notifications</h3>
-                  </div>
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-2 text-xs sm:text-sm">
-                      <input
-                        type="checkbox"
-                        checked={notifications.email}
-                        onChange={(e) => setNotifications(prev => ({ ...prev, email: e.target.checked }))}
-                        className="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500"
-                      />
-                      <span>Email Notifications</span>
-                    </label>
-                    <label className="flex items-center gap-2 text-xs sm:text-sm">
-                      <input
-                        type="checkbox"
-                        checked={notifications.documentExpiry}
-                        onChange={(e) => setNotifications(prev => ({ ...prev, documentExpiry: e.target.checked }))}
-                        className="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500"
-                      />
-                      <span>Document Expiry Alerts</span>
-                    </label>
-                    <label className="flex items-center gap-2 text-xs sm:text-sm">
-                      <input
-                        type="checkbox"
-                        checked={notifications.documentExpiringSoon}
-                        onChange={(e) => setNotifications(prev => ({ ...prev, documentExpiringSoon: e.target.checked }))}
-                        className="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500"
-                      />
-                      <span>Expiring Soon Warnings</span>
-                    </label>
-                    <label className="flex items-center gap-2 text-xs sm:text-sm">
-                      <input
-                        type="checkbox"
-                        checked={notifications.newEmployee}
-                        onChange={(e) => setNotifications(prev => ({ ...prev, newEmployee: e.target.checked }))}
-                        className="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500"
-                      />
-                      <span>New Employee Notifications</span>
-                    </label>
-                  </div>
-                </motion.div>
-
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -273,6 +312,7 @@ const Settings = () => {
                 </motion.div>
               </div>
             </div>
+            )}
           </TabsContent>
 
           {/* User Management Tab */}
@@ -298,6 +338,11 @@ const Settings = () => {
           </DialogHeader>
           
           <div className="space-y-4 py-4">
+            {error && (
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                {error}
+              </div>
+            )}
             <div>
               <label className="text-sm font-medium text-slate-700 mb-1 block">
                 Current Password
@@ -305,7 +350,10 @@ const Settings = () => {
               <Input
                 type="password"
                 value={passwordData.currentPassword}
-                onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                onChange={(e) => {
+                  setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }));
+                  setError('');
+                }}
                 className="w-full"
               />
             </div>
@@ -316,7 +364,10 @@ const Settings = () => {
               <Input
                 type="password"
                 value={passwordData.newPassword}
-                onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                onChange={(e) => {
+                  setPasswordData(prev => ({ ...prev, newPassword: e.target.value }));
+                  setError('');
+                }}
                 className="w-full"
                 placeholder="At least 8 characters"
               />
@@ -328,21 +379,40 @@ const Settings = () => {
               <Input
                 type="password"
                 value={passwordData.confirmPassword}
-                onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                onChange={(e) => {
+                  setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }));
+                  setError('');
+                }}
                 className="w-full"
               />
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowPasswordDialog(false);
-              setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-            }}>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowPasswordDialog(false);
+                setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                setError('');
+              }}
+              disabled={isChangingPassword}
+            >
               Cancel
             </Button>
-            <Button onClick={handlePasswordChange} className="bg-emerald-500 hover:bg-emerald-600">
-              Update Password
+            <Button 
+              onClick={handlePasswordChange} 
+              disabled={isChangingPassword}
+              className="bg-emerald-500 hover:bg-emerald-600"
+            >
+              {isChangingPassword ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Update Password'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

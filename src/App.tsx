@@ -12,7 +12,20 @@ import AddCaptain from './pages/AddCaptain';
 
 // Redirect authenticated users away from login
 const LoginRoute = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  // Show loading state while verifying authentication
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-slate-900">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400 mb-4"></div>
+          <p className="text-emerald-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
   }

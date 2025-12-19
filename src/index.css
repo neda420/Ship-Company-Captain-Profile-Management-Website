@@ -7,9 +7,9 @@
 @layer base {
   * {
     @apply antialiased;
-  }
-  
-  body {
+}
+
+body {
     @apply bg-slate-50 text-slate-900 font-sans;
     font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   }
@@ -21,12 +21,12 @@
   /* Smooth scrolling */
   html {
     scroll-behavior: smooth;
-  }
-  
+}
+
   /* Better focus styles */
   *:focus-visible {
     @apply outline-none ring-2 ring-emerald-500 ring-offset-2;
-  }
+}
 }
 
 @layer utilities {
@@ -46,7 +46,7 @@
   /* Smooth transitions */
   .transition-smooth {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
+}
 }
 
 /* Custom scrollbar */
@@ -61,7 +61,7 @@
 
 ::-webkit-scrollbar-thumb {
   @apply bg-slate-300 rounded-full;
-}
+  }
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-slate-400;
