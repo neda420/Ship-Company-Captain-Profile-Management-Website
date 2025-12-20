@@ -1,4 +1,4 @@
-# Database Migration Guide - Normalized Schema
+
 
 ## Overview
 

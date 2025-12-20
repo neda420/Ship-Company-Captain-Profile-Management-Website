@@ -1,4 +1,4 @@
-# 🚀 Complete Setup Instructions
+# Setup Instructions
 
 ## Prerequisites
 
@@ -10,9 +10,9 @@
 
 1. Open **phpMyAdmin**: `http://localhost/phpmyadmin`
 2. Create database: `global shipping company` (if not exists)
-3. **That's it!** The schema will be applied automatically when you start the server
+3. **That's it!** The schema code will be applied automatically when  start the server
 
-> **Note**: The server automatically runs migrations on startup. You don't need to manually run SQL files anymore!
+> **Note**: The server automatically runs migrations on startup. Don't need to manually run SQL files anymore!
 
 ## Step 2: Create Admin User
 
@@ -25,7 +25,7 @@ INSERT INTO users (username, password_hash, email, full_name, role, permissions_
 VALUES (
   'Admin',
   '$2a$10$dJDh4hOqihdm.zvg7VnpSOMy0w3ZBq6LeJpVSz8hbcVezA1ChxJ7G',
-  'nadim015582@gmail.com',
+  'example@gmail.com',
   'Admin',
   'admin',
   '["view_dashboard","view_employees","edit_employees","view_documents","manage_documents","view_settings","manage_users","manage_settings"]',
