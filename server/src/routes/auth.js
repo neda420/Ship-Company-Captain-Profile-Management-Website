@@ -6,6 +6,42 @@ import { generateToken, authRequired } from '../middleware/auth.js';
 const router = express.Router();
 const SETUP_ROUTES_ENABLED = process.env.ENABLE_SETUP_ROUTES === 'true';
 const SETUP_ADMIN_TOKEN = process.env.SETUP_ADMIN_TOKEN || '';
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const MAX_LOGIN_ATTEMPTS = 10;
+const loginAttempts = new Map();
+
+function getLoginAttemptKey(req) {
+  const username = String(req.body?.username || '').trim().toLowerCase();
+  return `${req.ip}:${username}`;
+}
+
+function isLoginRateLimited(key, now = Date.now()) {
+  const attempt = loginAttempts.get(key);
+  if (!attempt) {
+    return false;
+  }
+
+  if (now > attempt.resetAt) {
+    loginAttempts.delete(key);
+    return false;
+  }
+
+  return attempt.count >= MAX_LOGIN_ATTEMPTS;
+}
+
+function recordFailedLogin(key, now = Date.now()) {
+  const attempt = loginAttempts.get(key);
+  if (!attempt || now > attempt.resetAt) {
+    loginAttempts.set(key, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
+    return;
+  }
+
+  loginAttempts.set(key, { ...attempt, count: attempt.count + 1 });
+}
+
+function clearLoginAttempts(key) {
+  loginAttempts.delete(key);
+}
 
 function setupOnly(req, res, next) {
   if (!SETUP_ROUTES_ENABLED) {
@@ -59,9 +95,14 @@ router.get('/verify', authRequired, async (req, res) => {
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
+  const key = getLoginAttemptKey(req);
 
   if (!username || !password) {
     return res.status(400).json({ message: 'Username and password are required' });
+  }
+
+  if (isLoginRateLimited(key)) {
+    return res.status(429).json({ message: 'Too many login attempts. Try again later.' });
   }
 
   try {
@@ -75,6 +116,7 @@ router.post('/login', async (req, res) => {
 
     if (rows.length === 0) {
       console.log('[LOGIN] User not found:', username);
+      recordFailedLogin(key);
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
@@ -95,10 +137,12 @@ router.post('/login', async (req, res) => {
     console.log('[LOGIN] Password match:', passwordMatch);
 
     if (!passwordMatch) {
+      recordFailedLogin(key);
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
     const token = generateToken(user);
+    clearLoginAttempts(key);
 
     // Update last_login
     await query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
@@ -125,11 +169,11 @@ async function handleCreateAdmin(req, res) {
   const { username, password, email } = req.body || {};
 
   if (!username || !password || !email) {
-    return res.status(400).json({ message: 'username, password and email are required' });
+    return res.status(400).json({ message: 'Username, password and email are required' });
   }
 
   if (String(password).length < 12) {
-    return res.status(400).json({ message: 'password must be at least 12 characters' });
+    return res.status(400).json({ message: 'Password must be at least 12 characters' });
   }
 
   try {
@@ -306,4 +350,3 @@ router.post('/fix-db-schema', setupOnly, async (req, res) => {
 });
 
 export default router;
-

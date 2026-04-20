@@ -7,7 +7,7 @@ import { query } from '../db.js';
 import { authRequired } from '../middleware/auth.js';
 
 const router = express.Router();
-const MAX_UPLOAD_SIZE_MB = Number(process.env.MAX_UPLOAD_SIZE_MB || 10);
+const MAX_UPLOAD_SIZE_MB = Number(process.env.MAX_UPLOAD_SIZE_MB || '10');
 const MAX_UPLOAD_SIZE_BYTES = Number.isFinite(MAX_UPLOAD_SIZE_MB) && MAX_UPLOAD_SIZE_MB > 0
   ? MAX_UPLOAD_SIZE_MB * 1024 * 1024
   : 10 * 1024 * 1024;
@@ -898,4 +898,3 @@ router.get('/:id/documents', authRequired, async (req, res) => {
 });
 
 export default router;
-
