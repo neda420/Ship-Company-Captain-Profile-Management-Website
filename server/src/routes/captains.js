@@ -47,7 +47,8 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     const base = path.basename(file.originalname, ext);
-    const safeBase = base.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, FILE_NAME_MAX_LEN) || 'file';
+    const sanitizedBase = base.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, FILE_NAME_MAX_LEN);
+    const safeBase = /[a-zA-Z0-9]/.test(sanitizedBase) ? sanitizedBase : 'file';
     cb(null, `${safeBase}-${Date.now()}${ext}`);
   }
 });

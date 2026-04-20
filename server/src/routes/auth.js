@@ -17,7 +17,20 @@ const MAX_LOGIN_ATTEMPTS = Number.isFinite(parsedMaxLoginAttempts) && parsedMaxL
   ? parsedMaxLoginAttempts
   : DEFAULT_MAX_LOGIN_ATTEMPTS;
 const loginAttempts = new Map();
-const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/;
+const STRONG_PASSWORD_REGEX = /^(?=.{12,}$)(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/;
+
+function cleanupLoginAttempts(now = Date.now()) {
+  for (const [key, value] of loginAttempts.entries()) {
+    if (now > value.resetAt) {
+      loginAttempts.delete(key);
+    }
+  }
+}
+
+const cleanupTimer = setInterval(() => cleanupLoginAttempts(), LOGIN_WINDOW_MS);
+if (typeof cleanupTimer.unref === 'function') {
+  cleanupTimer.unref();
+}
 
 function getLoginAttemptKey(req) {
   const username = String(req.body?.username || '').trim().toLowerCase();

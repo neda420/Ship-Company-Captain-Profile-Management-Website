@@ -1,9 +1,11 @@
 import jwt from 'jsonwebtoken';
 
+class ConfigurationError extends Error {}
+
 function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    throw new Error('JWT_SECRET is not configured');
+    throw new ConfigurationError('JWT_SECRET is not configured');
   }
   return secret;
 }
@@ -21,7 +23,7 @@ export function authRequired(req, res, next) {
     req.user = payload;
     next();
   } catch (err) {
-    if (err.message === 'JWT_SECRET is not configured') {
+    if (err instanceof ConfigurationError) {
       return res.status(500).json({ message: 'Authentication service misconfigured' });
     }
     return res.status(401).json({ message: 'Invalid or expired token' });
