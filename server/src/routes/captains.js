@@ -7,6 +7,21 @@ import { query } from '../db.js';
 import { authRequired } from '../middleware/auth.js';
 
 const router = express.Router();
+const DEFAULT_MAX_UPLOAD_SIZE_MB = 10;
+const FILE_NAME_MAX_LEN = 80;
+const parsedMaxUploadSizeMb = Number(process.env.MAX_UPLOAD_SIZE_MB || DEFAULT_MAX_UPLOAD_SIZE_MB);
+const MAX_UPLOAD_SIZE_MB = Number.isFinite(parsedMaxUploadSizeMb) && parsedMaxUploadSizeMb > 0
+  ? parsedMaxUploadSizeMb
+  : DEFAULT_MAX_UPLOAD_SIZE_MB;
+const MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
+const ALLOWED_FILE_EXTENSIONS = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx']);
+const ALLOWED_FILE_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
 
 // Helpers for upload paths
 const __filename = fileURLToPath(import.meta.url);
@@ -30,13 +45,33 @@ const storage = multer.diskStorage({
     }
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
+    const ext = path.extname(file.originalname).toLowerCase();
     const base = path.basename(file.originalname, ext);
-    cb(null, `${base}-${Date.now()}${ext}`);
+    const sanitizedBase = base.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, FILE_NAME_MAX_LEN);
+    const safeBase = /[a-zA-Z0-9]/.test(sanitizedBase) ? sanitizedBase : 'file';
+    cb(null, `${safeBase}-${Date.now()}${ext}`);
   }
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: MAX_UPLOAD_SIZE_BYTES
+  },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const isAllowedExtension = ALLOWED_FILE_EXTENSIONS.has(ext);
+    const isAllowedMimeType = ALLOWED_FILE_MIME_TYPES.has((file.mimetype || '').toLowerCase());
+
+    if (!isAllowedExtension || !isAllowedMimeType) {
+      const error = new Error('Unsupported file type');
+      error.status = 400;
+      return cb(error);
+    }
+
+    return cb(null, true);
+  }
+});
 
 // GET /api/captains
 router.get('/', authRequired, async (req, res) => {
@@ -707,18 +742,7 @@ router.post('/:id/avatar', authRequired, upload.single('avatar'), async (req, re
   } catch (err) {
     console.error('[POST /captains/:id/avatar] Error:', err);
     console.error('[POST /captains/:id/avatar] Error stack:', err.stack);
-
-    const errorResponse = {
-      message: 'Server error',
-      error: err.message,
-    };
-
-    if (err.code) errorResponse.code = err.code;
-    if (err.sqlState) errorResponse.sqlState = err.sqlState;
-    if (err.sqlMessage) errorResponse.sqlMessage = err.sqlMessage;
-    if (err.errno) errorResponse.errno = err.errno;
-
-    return res.status(500).json(errorResponse);
+    return res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -838,18 +862,9 @@ router.post('/:id/documents', authRequired, upload.single('file'), async (req, r
         message: 'Document of this type already exists. Use replace=true to replace it.'
       });
     }
-
-    const errorResponse = {
-      message: 'Server error',
-      error: err.message,
-    };
-
-    if (err.code) errorResponse.code = err.code;
-    if (err.sqlState) errorResponse.sqlState = err.sqlState;
-    if (err.sqlMessage) errorResponse.sqlMessage = err.sqlMessage;
-    if (err.errno) errorResponse.errno = err.errno;
-
-    return res.status(500).json(errorResponse);
+    return res.status(err.status || 500).json({
+      message: err.status ? err.message : 'Server error'
+    });
   }
 });
 
@@ -887,5 +902,3 @@ router.get('/:id/documents', authRequired, async (req, res) => {
 });
 
 export default router;
-
-

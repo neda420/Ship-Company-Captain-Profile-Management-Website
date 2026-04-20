@@ -18,6 +18,23 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const IS_PROD = process.env.NODE_ENV === 'production';
+
+function validateRuntimeConfig() {
+  const missingEnv = [];
+
+  if (!process.env.JWT_SECRET) {
+    missingEnv.push('JWT_SECRET');
+  }
+
+  if (process.env.ENABLE_SETUP_ROUTES === 'true' && !process.env.SETUP_ADMIN_TOKEN) {
+    missingEnv.push('SETUP_ADMIN_TOKEN');
+  }
+
+  if (missingEnv.length > 0) {
+    throw new Error(`Missing required environment variables: ${missingEnv.join(', ')}`);
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -51,7 +68,7 @@ app.get('/api/health', async (req, res) => {
     res.status(500).json({ 
       status: 'error', 
       message: 'Database connection failed',
-      error: error.message 
+      ...(IS_PROD ? {} : { error: error.message })
     });
   }
 });
@@ -66,9 +83,11 @@ app.use('/api/settings', settingsRoutes);
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(err.status || 500).json({
-    message: err.message || 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  const parsedStatus = Number(err.status);
+  const status = Number.isInteger(parsedStatus) && parsedStatus >= 400 ? parsedStatus : 500;
+  res.status(status).json({
+    message: status >= 500 ? 'Internal server error' : (err.message || 'Request failed'),
+    ...(!IS_PROD && { stack: err.stack })
   });
 });
 
@@ -80,6 +99,8 @@ app.use((req, res) => {
 // Start server with database connection check and automatic migrations
 async function startServer() {
   try {
+    validateRuntimeConfig();
+
     // Test database connection
     console.log('Testing database connection...');
     await query('SELECT 1 as test');
@@ -135,5 +156,3 @@ async function startServer() {
 }
 
 startServer();
-
-
