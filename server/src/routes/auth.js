@@ -4,6 +4,25 @@ import { query } from '../db.js';
 import { generateToken, authRequired } from '../middleware/auth.js';
 
 const router = express.Router();
+const SETUP_ROUTES_ENABLED = process.env.ENABLE_SETUP_ROUTES === 'true';
+const SETUP_ADMIN_TOKEN = process.env.SETUP_ADMIN_TOKEN || '';
+
+function setupOnly(req, res, next) {
+  if (!SETUP_ROUTES_ENABLED) {
+    return res.status(404).json({ message: 'Route not found' });
+  }
+
+  const setupToken =
+    req.get('x-setup-token') ||
+    req.body?.setupToken ||
+    req.query?.setupToken;
+
+  if (!setupToken || setupToken !== SETUP_ADMIN_TOKEN) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  return next();
+}
 
 // GET /api/auth/verify - Verify if token is valid and return current user
 router.get('/verify', authRequired, async (req, res) => {
@@ -103,11 +122,15 @@ router.post('/login', async (req, res) => {
 
 // Helper used by both GET and POST /api/auth/create-admin
 async function handleCreateAdmin(req, res) {
-  const {
-    username = 'Admin',
-    password = 'nadimnaim01',
-    email = 'nadim015582@gmail.com',
-  } = (req.body || {});
+  const { username, password, email } = req.body || {};
+
+  if (!username || !password || !email) {
+    return res.status(400).json({ message: 'username, password and email are required' });
+  }
+
+  if (String(password).length < 12) {
+    return res.status(400).json({ message: 'password must be at least 12 characters' });
+  }
 
   try {
     const existing = await query('SELECT id FROM users WHERE username = ? LIMIT 1', [username]);
@@ -133,19 +156,15 @@ async function handleCreateAdmin(req, res) {
       [username, passwordHash, email, 'Admin', JSON.stringify(permissions)]
     );
 
-    return res.status(201).json({ message: 'Admin user created', username, password });
+    return res.status(201).json({ message: 'Admin user created', username });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'Server error' });
   }
 }
 
-// POST /api/auth/create-admin  (one-time helper if DB is empty)
-// Defaults set to the requested admin credentials.
-router.post('/create-admin', handleCreateAdmin);
-
-// Also allow GET in browser for convenience
-router.get('/create-admin', handleCreateAdmin);
+// POST /api/auth/create-admin  (setup-only helper)
+router.post('/create-admin', setupOnly, handleCreateAdmin);
 
 // POST /api/auth/change-password - Change user password
 router.post('/change-password', authRequired, async (req, res) => {
@@ -200,7 +219,7 @@ router.post('/change-password', authRequired, async (req, res) => {
   }
 });
 
-router.get('/fix-db-schema', async (req, res) => {
+router.post('/fix-db-schema', setupOnly, async (req, res) => {
   try {
     // 1. Create document_types
     await query(`
@@ -282,10 +301,9 @@ router.get('/fix-db-schema', async (req, res) => {
     return res.json({ message: 'DB Fixed Successfully' });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: 'Server error' });
   }
 });
 
 export default router;
-
 
