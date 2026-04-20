@@ -6,9 +6,18 @@ import { generateToken, authRequired } from '../middleware/auth.js';
 const router = express.Router();
 const SETUP_ROUTES_ENABLED = process.env.ENABLE_SETUP_ROUTES === 'true';
 const SETUP_ADMIN_TOKEN = process.env.SETUP_ADMIN_TOKEN || '';
-const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-const MAX_LOGIN_ATTEMPTS = 10;
+const DEFAULT_LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const DEFAULT_MAX_LOGIN_ATTEMPTS = 10;
+const parsedLoginWindow = Number(process.env.LOGIN_WINDOW_MS || DEFAULT_LOGIN_WINDOW_MS);
+const parsedMaxLoginAttempts = Number(process.env.MAX_LOGIN_ATTEMPTS || DEFAULT_MAX_LOGIN_ATTEMPTS);
+const LOGIN_WINDOW_MS = Number.isFinite(parsedLoginWindow) && parsedLoginWindow > 0
+  ? parsedLoginWindow
+  : DEFAULT_LOGIN_WINDOW_MS;
+const MAX_LOGIN_ATTEMPTS = Number.isFinite(parsedMaxLoginAttempts) && parsedMaxLoginAttempts > 0
+  ? parsedMaxLoginAttempts
+  : DEFAULT_MAX_LOGIN_ATTEMPTS;
 const loginAttempts = new Map();
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/;
 
 function getLoginAttemptKey(req) {
   const username = String(req.body?.username || '').trim().toLowerCase();
@@ -172,8 +181,10 @@ async function handleCreateAdmin(req, res) {
     return res.status(400).json({ message: 'Username, password and email are required' });
   }
 
-  if (String(password).length < 12) {
-    return res.status(400).json({ message: 'Password must be at least 12 characters' });
+  if (String(password).length < 12 || !STRONG_PASSWORD_REGEX.test(String(password))) {
+    return res.status(400).json({
+      message: 'Password must be at least 12 characters and include upper, lower, number, and special character'
+    });
   }
 
   try {

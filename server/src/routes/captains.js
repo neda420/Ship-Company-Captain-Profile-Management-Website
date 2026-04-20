@@ -7,10 +7,13 @@ import { query } from '../db.js';
 import { authRequired } from '../middleware/auth.js';
 
 const router = express.Router();
-const MAX_UPLOAD_SIZE_MB = Number(process.env.MAX_UPLOAD_SIZE_MB || '10');
-const MAX_UPLOAD_SIZE_BYTES = Number.isFinite(MAX_UPLOAD_SIZE_MB) && MAX_UPLOAD_SIZE_MB > 0
-  ? MAX_UPLOAD_SIZE_MB * 1024 * 1024
-  : 10 * 1024 * 1024;
+const DEFAULT_MAX_UPLOAD_SIZE_MB = 10;
+const FILE_NAME_MAX_LEN = 80;
+const parsedMaxUploadSizeMb = Number(process.env.MAX_UPLOAD_SIZE_MB || DEFAULT_MAX_UPLOAD_SIZE_MB);
+const MAX_UPLOAD_SIZE_MB = Number.isFinite(parsedMaxUploadSizeMb) && parsedMaxUploadSizeMb > 0
+  ? parsedMaxUploadSizeMb
+  : DEFAULT_MAX_UPLOAD_SIZE_MB;
+const MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
 const ALLOWED_FILE_EXTENSIONS = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx']);
 const ALLOWED_FILE_MIME_TYPES = new Set([
   'application/pdf',
@@ -44,7 +47,7 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     const base = path.basename(file.originalname, ext);
-    const safeBase = base.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'file';
+    const safeBase = base.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, FILE_NAME_MAX_LEN) || 'file';
     cb(null, `${safeBase}-${Date.now()}${ext}`);
   }
 });

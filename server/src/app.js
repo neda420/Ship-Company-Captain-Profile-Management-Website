@@ -83,7 +83,8 @@ app.use('/api/settings', settingsRoutes);
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  const status = Number.isInteger(err.status) ? err.status : 500;
+  const parsedStatus = Number(err.status);
+  const status = Number.isInteger(parsedStatus) && parsedStatus >= 400 ? parsedStatus : 500;
   res.status(status).json({
     message: status >= 500 ? 'Internal server error' : (err.message || 'Request failed'),
     ...(!IS_PROD && { stack: err.stack })
