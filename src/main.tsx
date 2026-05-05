@@ -11,7 +11,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <AuthProvider>
       <CaptainsProvider>
         <ToastProvider>
-    <App />
+          <App />
         </ToastProvider>
       </CaptainsProvider>
     </AuthProvider>
