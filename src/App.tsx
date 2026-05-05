@@ -1,17 +1,18 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Employees from './pages/Employees';
-import Documents from './pages/Documents';
-import Settings from './pages/Settings';
-import Profile from './pages/Profile';
-import AddCaptain from './pages/AddCaptain';
 
-// 1. Extracted Loading UI into a reusable component
+// 1. Implement Code Splitting - dynamically import pages
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Employees = lazy(() => import('./pages/Employees'));
+const Documents = lazy(() => import('./pages/Documents'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Profile = lazy(() => import('./pages/Profile'));
+const AddCaptain = lazy(() => import('./pages/AddCaptain'));
+
 const LoadingScreen = () => (
   <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-slate-900">
     <div className="text-center">
@@ -21,7 +22,6 @@ const LoadingScreen = () => (
   </div>
 );
 
-// Redirect authenticated users away from login
 const LoginRoute = () => {
   const { isAuthenticated, isLoading } = useAuth();
   
@@ -39,26 +39,30 @@ const LoginRoute = () => {
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/login" element={<LoginRoute />} />
-        <Route
-          element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/employees" element={<Employees />} />
-          <Route path="/documents" element={<Documents />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/add-captain" element={<AddCaptain />} />
-          <Route path="/profile/:id" element={<Profile />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      {/* 2. Wrap Routes in Suspense to handle lazy loading states globally */}
+      <Suspense fallback={<LoadingScreen />}>
+        <Routes>
+          <Route path="/login" element={<LoginRoute />} />
+          <Route
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/employees" element={<Employees />} />
+            <Route path="/documents" element={<Documents />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/add-captain" element={<AddCaptain />} />
+            <Route path="/profile/:id" element={<Profile />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </Router>
   );
 }
 
 export default App;
+```</React.Suspense>
