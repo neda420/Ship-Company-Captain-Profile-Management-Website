@@ -192,14 +192,6 @@ captain_skills (NEW)
 - Normalized structure reduces redundancy
 
 ## API Changes
-
-### Document Upload
-```javascript
-// Before
-POST /api/captains/:id/documents
-Body: { docKey: "passportScan", file: File }
-
-// After (same endpoint, enhanced)
 POST /api/captains/:id/documents
 Body: { docKey: "passportScan", file: File, replace: false }
 Response: { document: {...}, replaced: false }
