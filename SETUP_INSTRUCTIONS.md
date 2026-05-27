@@ -12,8 +12,7 @@
 2. Create database: `global shipping company` (if not exists)
 3. **That's it!** The schema code will be applied automatically when  start the server
 
-> **Note**: The server automatically runs migrations on startup. Don't need to manually run SQL files anymore!
-
+> **Note**: The server automatically runs migrations on startup.
 ## Step 2: Create Admin User
 
 Run this SQL in phpMyAdmin (SQL tab):
