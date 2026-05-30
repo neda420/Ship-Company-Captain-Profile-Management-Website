@@ -40,6 +40,7 @@ Full-stack application for managing captain profiles, documents, expiry tracking
 
 ## Useful scripts
 
+
 - Root:
   - `npm run dev` – start frontend + backend concurrently
   - `npm run lint` – run frontend lint
