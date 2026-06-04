@@ -366,7 +366,6 @@ const EmployeeTable = ({ employees, initialStatusFilter }: EmployeeTableProps) =
             </motion.div>
           ))}
         </motion.div>
-
         {filteredEmployees.length === 0 && (
           <div className="glass rounded-xl p-8 text-center">
             <p className="text-slate-500">No employees found matching your filters.</p>
