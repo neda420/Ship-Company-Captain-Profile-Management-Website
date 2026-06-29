@@ -2,7 +2,7 @@
 # Usage: .\run-schema.ps1
 
 Write-Host "Running database schema..." -ForegroundColor Cyan
-
+# Try to find MySQL executable
 # Try to find MySQL executable
 $mysqlExe = $null
 
