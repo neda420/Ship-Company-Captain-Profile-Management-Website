@@ -3,7 +3,6 @@
 
 Write-Host "Running database schema..." -ForegroundColor Cyan
 # Try to find MySQL executable
-# Try to find MySQL executable
 $mysqlExe = $null
 
 # Check if MySQL is in PATH
