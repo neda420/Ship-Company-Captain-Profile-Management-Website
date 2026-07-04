@@ -9,7 +9,6 @@ Full-stack application for managing captain profiles, documents, expiry tracking
 - Auth: JWT bearer token
 
 ## Project structure
-
 - `src/` – frontend app
 - `server/src/` – backend API, routes, middleware, migrations
 
