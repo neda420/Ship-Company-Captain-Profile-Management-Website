@@ -3,7 +3,6 @@
 Full-stack application for managing captain profiles, documents, expiry tracking, and role-based access for a shipping company.
 
 ## Tech stack
-
 - Frontend: React + TypeScript + Vite + Tailwind
 - Backend: Node.js + Express + MySQL
 - Auth: JWT bearer token
