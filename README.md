@@ -12,7 +12,6 @@ Full-stack application for managing captain profiles, documents, expiry tracking
 - `server/src/` – backend API, routes, middleware, migrations
 
 ## Local development
-
 1. Install dependencies:
    - `npm ci`
    - `cd server && npm ci`
