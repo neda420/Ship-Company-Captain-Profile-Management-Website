@@ -3,7 +3,7 @@
 
 param(
     [int]$Port = 4000
-)
+) 
 
 Write-Host "Checking for processes on port $Port..." -ForegroundColor Cyan
 
