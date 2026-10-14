@@ -10,7 +10,7 @@ Write-Host "Checking for processes on port $Port..." -ForegroundColor Cyan
 $connection = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue
 
 if ($connection) {
-    $processId = $connection.OwningProcess
+    $processId = $connection.OwningProcess    
     $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
     
     if ($process) {
